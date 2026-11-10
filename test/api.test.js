@@ -109,3 +109,27 @@ test('tags every response with a request id', async () => {
   const res = await fetch(`${base}/products`);
   assert.match(res.headers.get('x-request-id'), /^[0-9a-f-]{36}$/);
 });
+
+test('accepts form-encoded numeric fields and rejects non-numeric ones', async () => {
+  const post = (fields) => fetch(`${base}/products`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ name: 'Form Item', sku: 'FORM-001', category: 'Test', price: '10', quantity: '5', ...fields }),
+  }).then(async (res) => ({ status: res.status, body: await res.json() }));
+
+  const ok = await post({});
+  assert.equal(ok.status, 201);
+  await call('DELETE', `/products/${ok.body.data.id}`);
+  assert.equal((await post({ price: 'abc' })).status, 400);
+  assert.equal((await post({ quantity: '' })).status, 400);
+});
+
+test('serves an index page with a favicon link so browsers do not request /favicon.ico', async () => {
+  const res = await fetch(`${base}/`);
+  assert.match(await res.text(), /<link rel="icon"/);
+});
+
+test('dialog contains a toast host so error toasts stay visible while it is open', async () => {
+  const res = await fetch(`${base}/`);
+  assert.match(await res.text(), /<dialog id="product-dialog"[^>]*>[\s\S]*id="dialog-toasts"/);
+});

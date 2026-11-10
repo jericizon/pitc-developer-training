@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Stockroom</title>
+  <link rel="icon" href="data:,">
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
@@ -90,6 +91,8 @@
         <button type="submit" id="save-btn" class="btn btn-primary">Save</button>
       </div>
     </form>
+    <!-- toasts shown while the modal dialog is open must live inside it to stay in the top layer -->
+    <div id="dialog-toasts" class="toasts" aria-live="polite"></div>
   </dialog>
 
   <div id="toasts" class="toasts" aria-live="polite"></div>
