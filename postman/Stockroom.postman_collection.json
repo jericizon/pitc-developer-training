@@ -1,0 +1,109 @@
+{
+  "info": {
+    "_postman_id": "5b0e7c3a-2d4f-4e8b-9c1a-6f7d8e9a0b1c",
+    "name": "Stockroom API",
+    "description": "Requests for the Stockroom Product Inventory API. Run the requests in order: Create Product stores the new id in the productId variable for the Update and Delete requests.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000" },
+    { "key": "productId", "value": "1" }
+  ],
+  "item": [
+    {
+      "name": "Get all products",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/products", "host": ["{{baseUrl}}"], "path": ["products"] },
+        "description": "Expected: 200 with success true and data as an array of products. Each product includes a computed status: in-stock, low-stock, or out-of-stock."
+      }
+    },
+    {
+      "name": "Get product by ID",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/products/{{productId}}", "host": ["{{baseUrl}}"], "path": ["products", "{{productId}}"] },
+        "description": "Expected: 200 with the product in data. 404 with message \"Product not found\" if the ID does not exist."
+      }
+    },
+    {
+      "name": "Create product",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code === 201) {",
+              "    pm.collectionVariables.set('productId', pm.response.json().data.id);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"name\": \"Postman Test Cable\", \"sku\": \"PM-001\", \"category\": \"Accessories\", \"price\": 149.9, \"quantity\": 12}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": { "raw": "{{baseUrl}}/products", "host": ["{{baseUrl}}"], "path": ["products"] },
+        "description": "Expected: 201 with the created product, including its new id. 400 with a message if a field is invalid. 409 with message \"SKU already exists\" if the SKU is taken; change the sku before running again."
+      }
+    },
+    {
+      "name": "Update product",
+      "request": {
+        "method": "PUT",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"name\": \"Postman Test Cable (Updated)\", \"sku\": \"PM-001\", \"category\": \"Accessories\", \"price\": 159.9, \"quantity\": 3}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": { "raw": "{{baseUrl}}/products/{{productId}}", "host": ["{{baseUrl}}"], "path": ["products", "{{productId}}"] },
+        "description": "Send all fields. Expected: 200 with the updated product; quantity 3 gives status low-stock. 404 if the ID does not exist. 409 if the SKU belongs to another product."
+      }
+    },
+    {
+      "name": "Delete product",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/products/{{productId}}", "host": ["{{baseUrl}}"], "path": ["products", "{{productId}}"] },
+        "description": "Expected: 200 with data.id of the deleted product. 404 if the product was already deleted."
+      }
+    },
+    {
+      "name": "Search products",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/products?search=mouse", "host": ["{{baseUrl}}"], "path": ["products"], "query": [{ "key": "search", "value": "mouse" }] },
+        "description": "Matches name or SKU, case-insensitive. Expected: 200 with Wireless Mouse in data."
+      }
+    },
+    {
+      "name": "Filter products by category",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/products?category=Office", "host": ["{{baseUrl}}"], "path": ["products"], "query": [{ "key": "category", "value": "Office" }] },
+        "description": "Expected: 200 with only products whose category is Office."
+      }
+    },
+    {
+      "name": "Filter products by stock status",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/products?status=low-stock", "host": ["{{baseUrl}}"], "path": ["products"], "query": [{ "key": "status", "value": "low-stock" }] },
+        "description": "Accepts in-stock, low-stock, or out-of-stock. Expected: 200 with only matching products. 400 with a message for any other value."
+      }
+    }
+  ]
+}
