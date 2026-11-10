@@ -202,7 +202,7 @@ function toast(message, type = 'info') {
     setTimeout(() => el.remove(), 200);
   };
   el.querySelector('button').addEventListener('click', dismiss);
-  $('toasts').append(el);
+  (dialog.open ? $('dialog-toasts') : $('toasts')).append(el);
   setTimeout(dismiss, 4000);
 }
 

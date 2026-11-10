@@ -29,6 +29,14 @@ function statusOf(quantity) {
 
 const withStatus = (product) => ({ ...product, status: statusOf(product.quantity) });
 
+const toNumber = (value) => (typeof value === 'string' && value.trim() !== '' ? Number(value) : value);
+
+// Form fields arrive as strings; JSON numbers stay strict.
+const bodyOf = (req) => {
+  if (!req.is('application/x-www-form-urlencoded')) return req.body ?? {};
+  return { ...req.body, price: toNumber(req.body.price), quantity: toNumber(req.body.quantity) };
+};
+
 function validate({ name, sku, category, price, quantity }) {
   const errors = [];
   if (typeof name !== 'string' || !name.trim() || name.trim().length > 100) errors.push('name must be 1-100 characters');
@@ -70,7 +78,7 @@ router.get('/:id', (req, res, next) => {
 });
 
 router.post('/', (req, res, next) => {
-  const body = req.body ?? {};
+  const body = bodyOf(req);
   const errors = validate(body);
   if (errors.length) return next(apiError(400, errors.join('; ')));
   if (skuInUse(body.sku)) return next(apiError(409, 'SKU already exists'));
@@ -83,7 +91,7 @@ router.post('/', (req, res, next) => {
 router.put('/:id', (req, res, next) => {
   const product = findById(req.params.id);
   if (!product) return next(apiError(404, 'Product not found'));
-  const body = req.body ?? {};
+  const body = bodyOf(req);
   const errors = validate(body);
   if (errors.length) return next(apiError(400, errors.join('; ')));
   if (skuInUse(body.sku, product.id)) return next(apiError(409, 'SKU already exists'));
