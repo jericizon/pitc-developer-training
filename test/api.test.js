@@ -98,3 +98,14 @@ test('serves static files with a cache-control header', async () => {
   assert.match(res.headers.get('content-type'), /text\/css/);
   assert.match(res.headers.get('cache-control'), /max-age=0/);
 });
+
+test('rejects overlong text and unsafe quantities', async () => {
+  assert.equal((await call('POST', '/products', { ...sample, name: 'x'.repeat(101) })).status, 400);
+  assert.equal((await call('POST', '/products', { ...sample, category: 'x'.repeat(51) })).status, 400);
+  assert.equal((await call('POST', '/products', { ...sample, quantity: Number.MAX_SAFE_INTEGER + 2 })).status, 400);
+});
+
+test('tags every response with a request id', async () => {
+  const res = await fetch(`${base}/products`);
+  assert.match(res.headers.get('x-request-id'), /^[0-9a-f-]{36}$/);
+});

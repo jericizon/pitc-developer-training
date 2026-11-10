@@ -31,11 +31,11 @@ const withStatus = (product) => ({ ...product, status: statusOf(product.quantity
 
 function validate({ name, sku, category, price, quantity }) {
   const errors = [];
-  if (typeof name !== 'string' || !name.trim()) errors.push('name is required');
+  if (typeof name !== 'string' || !name.trim() || name.trim().length > 100) errors.push('name must be 1-100 characters');
   if (typeof sku !== 'string' || !SKU_PATTERN.test(sku.trim())) errors.push('sku must be 3-20 letters, numbers or hyphens');
-  if (typeof category !== 'string' || !category.trim()) errors.push('category is required');
+  if (typeof category !== 'string' || !category.trim() || category.trim().length > 50) errors.push('category must be 1-50 characters');
   if (!Number.isFinite(price) || price < 0) errors.push('price must be a number of 0 or more');
-  if (!Number.isInteger(quantity) || quantity < 0) errors.push('quantity must be a whole number of 0 or more');
+  if (!Number.isSafeInteger(quantity) || quantity < 0) errors.push('quantity must be a whole number of 0 or more');
   return errors;
 }
 

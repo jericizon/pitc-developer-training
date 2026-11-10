@@ -67,13 +67,13 @@
     <form id="product-form" novalidate>
       <h2 id="dialog-title">Add Product</h2>
       <label>Product Name <span class="req">*</span>
-        <input name="name" type="text" required>
+        <input name="name" type="text" required maxlength="100">
       </label>
       <label>SKU <span class="req">*</span>
         <input name="sku" type="text" required pattern="[A-Za-z0-9\-]{3,20}" title="3 to 20 letters, numbers, or hyphens" placeholder="ACC-001">
       </label>
       <label>Category <span class="req">*</span>
-        <input name="category" type="text" required list="category-options">
+        <input name="category" type="text" required maxlength="50" list="category-options">
       </label>
       <datalist id="category-options"></datalist>
       <div class="form-row">

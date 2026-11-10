@@ -25,15 +25,18 @@ function saveFavorites() {
 const esc = (value) => String(value).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
 async function api(url, options = {}) {
+  const timeout = AbortSignal.timeout(10000);
   let res;
   try {
     res = await fetch(url, {
       ...options,
+      signal: options.signal ? AbortSignal.any([options.signal, timeout]) : timeout,
       headers: { 'Content-Type': 'application/json' },
       body: options.body && JSON.stringify(options.body),
     });
   } catch (err) {
     if (err.name === 'AbortError') throw err;
+    if (err.name === 'TimeoutError') throw new Error('The server took too long to respond.');
     throw new Error('Cannot reach the server. Is it running?');
   }
   const json = await res.json().catch(() => null);
