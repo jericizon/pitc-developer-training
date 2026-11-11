@@ -164,7 +164,9 @@ settings:
 
 importers:
 
-  .:
+  .: {}
+
+  express-js:
     dependencies:
       express:
         specifier: ^5.3.0
