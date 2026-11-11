@@ -1,18 +1,5 @@
 {
-  "name": "stockroom",
-  "version": "1.0.0",
-  "description": "Express.js Product Inventory Manager MVP",
-  "main": "app.js",
-  "scripts": {
-    "start": "node app.js",
-    "dev": "nodemon app.js",
-    "test": "node --test"
-  },
-  "packageManager": "pnpm@12.18.0",
-  "dependencies": {
-    "express": "^5.3.0"
-  },
-  "devDependencies": {
-    "nodemon": "^3.1.14"
-  }
+  "name": "pitc-developer-training",
+  "private": true,
+  "packageManager": "pnpm@12.18.0"
 }
