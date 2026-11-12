@@ -82,8 +82,6 @@ This server returns JSON only. The UI is the Next.js app in `nextjs-dashboard/`;
 - **`EADDRINUSE` on startup:** Another program is using the port. Set a different `PORT` (see Configuration).
 - **`Could not connect to SQL Server`:** Check that the container is `healthy` (`docker compose ps`), that `DB_PASSWORD` is set, and that it matches `MSSQL_SA_PASSWORD`.
 - **Products are missing:** Run `pnpm seed`. The activity log is in memory and resets on restart.
-- **Favorites differ between browsers:** Favorites are stored per browser, not on the server.
-- **`pnpm: command not found`:** Install pnpm before running the commands above.
 
 ## API Documentation
 
@@ -176,7 +174,7 @@ Malformed JSON returns `400` with `"Malformed JSON request body"`. Unknown route
 
 ## Browser API Implementation
 
-The browser code now lives in the Next.js app (`nextjs-dashboard/app/stockroom/`). The behavior below still applies to the UI.
+The browser code lives in the Next.js app (`nextjs-dashboard/app/ui/products/`). The behavior below still applies to the UI.
 
 ### Web Storage API
 
@@ -200,6 +198,7 @@ stockroom/
 ├── middleware/
 │   └── requestLogger.js    Logs each request: method, URL, status, duration
 ├── routes/
+│   ├── activity.js         Activity log and GET /activity
 │   └── products.js         Product routes, validation, SQL queries
 ├── scripts/
 │   └── seed.js             Creates the database table and sample products
