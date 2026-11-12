@@ -1,6 +1,7 @@
 const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 const app = require('../app');
+const { closePool } = require('../db');
 
 let server;
 let base;
@@ -12,7 +13,10 @@ before(() => new Promise((resolve) => {
   });
 }));
 
-after(() => new Promise((resolve) => server.close(resolve)));
+after(async () => {
+  await new Promise((resolve) => server.close(resolve));
+  await closePool();
+});
 
 const call = (method, path, body) =>
   fetch(base + path, {

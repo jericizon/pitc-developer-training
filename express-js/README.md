@@ -4,7 +4,7 @@ Stockroom is a small product inventory manager. You can add, edit, and delete pr
 
 ## Technology Stack
 
-- **Backend:** Node.js, Express.js 5, CommonJS modules, in-memory product array
+- **Backend:** Node.js, Express.js 5, CommonJS modules, SQL Server in Docker (via `mssql`)
 - **Frontend:** the Next.js app in `nextjs-dashboard/` (React, TypeScript)
 - **Browser APIs:** Web Storage API (`localStorage`) and Constraint Validation API, used by the Next.js app
 - **Package manager:** pnpm
@@ -22,15 +22,44 @@ Stockroom is a small product inventory manager. You can add, edit, and delete pr
    pnpm install
    ```
 
-2. Start the development server, which restarts when files change:
+2. Set up the database (see [Database](#database-sql-server)).
+
+3. Start the development server, which restarts when files change:
 
    ```bash
    pnpm dev
    ```
 
-3. Open `http://localhost:3001/` to see the JSON home response. The UI runs from the Next.js app, not from this server.
+4. Open `http://localhost:3001/` to see the JSON home response. The UI runs from the Next.js app, not from this server.
 
 For a normal start without auto-restart, run `pnpm start`. Stop the server with `Ctrl+C`. Run the automated tests with `pnpm test`.
+
+## Database (SQL Server)
+
+Products are stored in SQL Server, which runs in Docker. You need Docker with Compose.
+
+Shortcut: `pnpm server:up` (from `express-js/` or the repo root) starts the container, waits until it is healthy, and runs the migration. The migration creates the database and table if they are missing, and loads sample products only when the table is empty. It does not start the API; run `pnpm dev` afterwards. The steps below do the same thing by hand.
+
+1. Add the database settings to your existing `.env`. Do not replace the file if it already has `PORT`. If you are starting fresh, copy `.env.example` to `.env`. Set `MSSQL_SA_PASSWORD` and `DB_PASSWORD` to the same value. SQL Server requires at least 8 characters with uppercase and lowercase letters, a digit, and a symbol. `.env` is git-ignored.
+
+2. Start the container and wait until `docker compose ps` shows `healthy`:
+
+   ```bash
+   docker compose up -d
+   docker compose ps
+   ```
+
+3. Create the `Stockroom` database and table, and load the sample products:
+
+   ```bash
+   pnpm seed
+   ```
+
+   `pnpm seed` does nothing if the table already has rows. To replace them with the sample products, run `pnpm seed --reset`.
+
+4. Run `pnpm test` to check the API against the database. The tests create and delete their own products.
+
+Stop the container with `docker compose down`. Data stays in the `mssql-data` volume; `docker compose down -v` deletes it. The connection trusts the container's self-signed certificate, which is fine for local development only. To use another host port, set `DB_PORT` in `.env`.
 
 ## Configuration
 
@@ -51,7 +80,8 @@ This server returns JSON only. The UI is the Next.js app in `nextjs-dashboard/`;
 ## Troubleshooting
 
 - **`EADDRINUSE` on startup:** Another program is using the port. Set a different `PORT` (see Configuration).
-- **Products are gone after a restart:** This is expected. Products live in memory only.
+- **`Could not connect to SQL Server`:** Check that the container is `healthy` (`docker compose ps`), that `DB_PASSWORD` is set, and that it matches `MSSQL_SA_PASSWORD`.
+- **Products are missing:** Run `pnpm seed`. The activity log is in memory and resets on restart.
 - **Favorites differ between browsers:** Favorites are stored per browser, not on the server.
 - **`pnpm: command not found`:** Install pnpm before running the commands above.
 
@@ -161,13 +191,18 @@ The product form uses native attributes: `required`, `min`, `step`, and `pattern
 ```text
 stockroom/
 ├── app.js                  Express app setup, home route, error handling
+├── db.js                   SQL Server connection pool (mssql)
+├── docker-compose.yml      SQL Server container
+├── .env.example            Environment variables template
 ├── package.json
 ├── pnpm-lock.yaml
 ├── README.md
 ├── middleware/
 │   └── requestLogger.js    Logs each request: method, URL, status, duration
 ├── routes/
-│   └── products.js         Product routes, validation, in-memory product array
+│   └── products.js         Product routes, validation, SQL queries
+├── scripts/
+│   └── seed.js             Creates the database table and sample products
 ├── postman/
 │   └── Stockroom.postman_collection.json
 └── test/
@@ -205,6 +240,6 @@ Every API error uses the same format:
 
 ## Known Limitations
 
-- Products are stored in memory and reset when the server restarts.
+- The activity log is stored in memory and resets when the server restarts.
 - Favorites are stored in each browser's `localStorage`. They are not shared between browsers and are not tied to a user.
-- There is no authentication, pagination, or database.
+- There is no authentication or pagination.

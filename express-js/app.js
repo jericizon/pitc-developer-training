@@ -4,6 +4,7 @@ const express = require('express');
 const requestLogger = require('./middleware/requestLogger');
 const productRoutes = require('./routes/products');
 const { router: activityRoutes } = require('./routes/activity');
+const { getPool } = require('./db');
 
 const app = express();
 const envFile = path.join(__dirname, '.env');
@@ -31,11 +32,18 @@ app.use((err, req, res, next) => {
 });
 
 if (require.main === module) {
-  const server = app.listen(PORT, () => console.log(`Stockroom running at http://localhost:${PORT}`));
-  server.on('error', (err) => {
-    console.error(`Could not start on port ${PORT}: ${err.code}`);
-    process.exit(1);
-  });
+  getPool()
+    .then(() => {
+      const server = app.listen(PORT, () => console.log(`Stockroom running at http://localhost:${PORT}`));
+      server.on('error', (err) => {
+        console.error(`Could not start on port ${PORT}: ${err.code}`);
+        process.exit(1);
+      });
+    })
+    .catch((err) => {
+      console.error(`Could not connect to SQL Server: ${err.message}`);
+      process.exit(1);
+    });
 }
 
 module.exports = app;
