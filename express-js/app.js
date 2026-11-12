@@ -3,18 +3,20 @@ const path = require('path');
 const express = require('express');
 const requestLogger = require('./middleware/requestLogger');
 const productRoutes = require('./routes/products');
+const { router: activityRoutes } = require('./routes/activity');
 
 const app = express();
 const envFile = path.join(__dirname, '.env');
 if (fs.existsSync(envFile)) process.loadEnvFile(envFile); // does not override vars already set in the shell
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 
 app.use(requestLogger);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname, 'public'), { maxAge: process.env.NODE_ENV === 'production' ? '1d' : 0 }));
-
 app.use('/products', productRoutes);
+app.use('/activity', activityRoutes);
+
+app.get('/', (req, res) => res.json({ success: true, data: { name: 'Stockroom API' } }));
 
 app.use((req, res) => res.status(404).json({ success: false, message: 'Route not found' }));
 

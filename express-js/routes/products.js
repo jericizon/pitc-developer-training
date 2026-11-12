@@ -1,5 +1,6 @@
 const express = require('express');
 const { randomUUID } = require('crypto');
+const { record } = require('./activity');
 
 const router = express.Router();
 
@@ -85,6 +86,7 @@ router.post('/', (req, res, next) => {
 
   const product = { id: randomUUID(), ...clean(body) };
   products.push(product);
+  record({ action: 'created', product, detail: `${product.quantity} units` });
   res.status(201).json({ success: true, data: withStatus(product) });
 });
 
@@ -96,7 +98,9 @@ router.put('/:id', (req, res, next) => {
   if (errors.length) return next(apiError(400, errors.join('; ')));
   if (skuInUse(body.sku, product.id)) return next(apiError(409, 'SKU already exists'));
 
+  const before = product.quantity;
   Object.assign(product, clean(body));
+  record({ action: 'updated', product, detail: before === product.quantity ? 'details updated' : `quantity ${before} → ${product.quantity}` });
   res.json({ success: true, data: withStatus(product) });
 });
 
@@ -104,6 +108,7 @@ router.delete('/:id', (req, res, next) => {
   const product = findById(req.params.id);
   if (!product) return next(apiError(404, 'Product not found'));
   products.splice(products.indexOf(product), 1);
+  record({ action: 'deleted', product, detail: null });
   res.json({ success: true, data: { id: product.id } });
 });
 
