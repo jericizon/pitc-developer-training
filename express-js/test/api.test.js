@@ -1,6 +1,7 @@
 const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 const app = require('../app');
+const { closePool } = require('../db');
 
 let server;
 let base;
@@ -12,7 +13,10 @@ before(() => new Promise((resolve) => {
   });
 }));
 
-after(() => new Promise((resolve) => server.close(resolve)));
+after(async () => {
+  await new Promise((resolve) => server.close(resolve));
+  await closePool();
+});
 
 const call = (method, path, body) =>
   fetch(base + path, {
@@ -92,11 +96,13 @@ test('returns JSON errors for malformed bodies and unknown routes', async () => 
   assert.equal((await call('GET', '/nope')).status, 404);
 });
 
-test('serves static files with a cache-control header', async () => {
-  const res = await fetch(`${base}/css/style.css`);
-  assert.equal(res.status, 200);
-  assert.match(res.headers.get('content-type'), /text\/css/);
-  assert.match(res.headers.get('cache-control'), /max-age=0/);
+test('returns a JSON home response and no longer serves the UI', async () => {
+  const home = await call('GET', '/');
+  assert.equal(home.status, 200);
+  assert.deepEqual(home.body, { success: true, data: { name: 'Stockroom API' } });
+  const css = await call('GET', '/css/style.css');
+  assert.equal(css.status, 404);
+  assert.equal(css.body.success, false);
 });
 
 test('rejects overlong text and unsafe quantities', async () => {
@@ -124,12 +130,15 @@ test('accepts form-encoded numeric fields and rejects non-numeric ones', async (
   assert.equal((await post({ quantity: '' })).status, 400);
 });
 
-test('serves an index page with a favicon link so browsers do not request /favicon.ico', async () => {
-  const res = await fetch(`${base}/`);
-  assert.match(await res.text(), /<link rel="icon"/);
-});
+test('records create, update, and delete in the activity log, newest first', async () => {
+  const created = await call('POST', '/products', { ...sample, sku: 'ACT-001' });
+  const id = created.body.data.id;
+  await call('PUT', `/products/${id}`, { ...sample, sku: 'ACT-001', quantity: 2 });
+  await call('DELETE', `/products/${id}`);
 
-test('dialog contains a toast host so error toasts stay visible while it is open', async () => {
-  const res = await fetch(`${base}/`);
-  assert.match(await res.text(), /<dialog id="product-dialog"[^>]*>[\s\S]*id="dialog-toasts"/);
+  const { body } = await call('GET', '/activity');
+  assert.equal(body.success, true);
+  const mine = body.data.filter((e) => e.productId === id);
+  assert.deepEqual(mine.map((e) => e.action), ['deleted', 'updated', 'created']);
+  assert.equal(mine[1].detail, 'quantity 3 → 2');
 });

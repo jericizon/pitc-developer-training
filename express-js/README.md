@@ -1,12 +1,12 @@
 # Stockroom
 
-Stockroom is a small product inventory manager. You can add, edit, and delete products, see stock totals, search and filter the table, and mark products as favorites. It is an Express.js learning project with a plain HTML, CSS, and JavaScript frontend.
+Stockroom is a small product inventory manager. You can add, edit, and delete products, see stock totals, search and filter the table, and mark products as favorites. It is an Express.js learning project. This folder is the JSON API; the UI is the Next.js app in `nextjs-dashboard/`.
 
 ## Technology Stack
 
-- **Backend:** Node.js, Express.js 5, CommonJS modules, in-memory product array
-- **Frontend:** HTML5, CSS3, vanilla JavaScript, Fetch API
-- **Browser APIs:** Web Storage API (`localStorage`), Constraint Validation API
+- **Backend:** Node.js, Express.js 5, CommonJS modules, SQL Server in Docker (via `mssql`)
+- **Frontend:** the Next.js app in `nextjs-dashboard/` (React, TypeScript)
+- **Browser APIs:** Web Storage API (`localStorage`) and Constraint Validation API, used by the Next.js app
 - **Package manager:** pnpm
 
 ## Prerequisites
@@ -22,58 +22,72 @@ Stockroom is a small product inventory manager. You can add, edit, and delete pr
    pnpm install
    ```
 
-2. Start the development server, which restarts when files change:
+2. Set up the database (see [Database](#database-sql-server)).
+
+3. Start the development server, which restarts when files change:
 
    ```bash
    pnpm dev
    ```
 
-3. Open `http://localhost:3000` in your browser.
+4. Open `http://localhost:3001/` to see the JSON home response. The UI runs from the Next.js app, not from this server.
 
 For a normal start without auto-restart, run `pnpm start`. Stop the server with `Ctrl+C`. Run the automated tests with `pnpm test`.
+
+## Database (SQL Server)
+
+Products are stored in SQL Server, which runs in Docker. You need Docker with Compose.
+
+Shortcut: `pnpm server:up` (from `express-js/` or the repo root) starts the container, waits until it is healthy, and runs the migration. The migration creates the database and table if they are missing, and loads sample products only when the table is empty. It does not start the API; run `pnpm dev` afterwards. The steps below do the same thing by hand.
+
+1. Add the database settings to your existing `.env`. Do not replace the file if it already has `PORT`. If you are starting fresh, copy `.env.example` to `.env`. Set `MSSQL_SA_PASSWORD` and `DB_PASSWORD` to the same value. SQL Server requires at least 8 characters with uppercase and lowercase letters, a digit, and a symbol. `.env` is git-ignored.
+
+2. Start the container and wait until `docker compose ps` shows `healthy`:
+
+   ```bash
+   docker compose up -d
+   docker compose ps
+   ```
+
+3. Create the `Stockroom` database and table, and load the sample products:
+
+   ```bash
+   pnpm seed
+   ```
+
+   `pnpm seed` does nothing if the table already has rows. To replace them with the sample products, run `pnpm seed --reset`.
+
+4. Run `pnpm test` to check the API against the database. The tests create and delete their own products.
+
+Stop the container with `docker compose down`. Data stays in the `mssql-data` volume; `docker compose down -v` deletes it. The connection trusts the container's self-signed certificate, which is fine for local development only. To use another host port, set `DB_PORT` in `.env`.
 
 ## Configuration
 
 ### Port
 
-The server uses port 3000 by default. To change it, create a `.env` file in the project root. It is git-ignored.
+The server uses port 3001 by default. To change it, create a `.env` file in the project root. It is git-ignored.
 
 ```text
-PORT=3001
+PORT=3002
 ```
 
 A `PORT` value set in the shell takes priority over `.env`, for example `PORT=3002 pnpm dev`.
 
-### Static File Caching
+## Using the API
 
-In development, static files are not cached, so UI changes appear on reload. To cache them for one day, set `NODE_ENV=production`:
-
-```bash
-NODE_ENV=production pnpm start
-```
-
-## Using the App
-
-- **Dashboard:** The four cards at the top show total products, total units, low-stock products, and out-of-stock products. They update after every change.
-- **Add a product:** Click **Add Product**, fill in the form, and click **Save**. Fields marked `*` are required. The SKU must be 3–20 letters, numbers, or hyphens, and it must be unique.
-- **Edit a product:** Click **Edit** on a row, change the values, and click **Save**.
-- **Delete a product:** Click **Delete** and confirm.
-- **Search:** Type a name or SKU in the search box.
-- **Filter:** Choose a category or stock status. Click **Clear filters** to reset everything.
-- **Favorites:** Click the ☆ star to mark a product as a favorite; it turns into ★. Tick **Favorites only** to show only favorites. Favorites are saved in your browser and survive a page refresh.
-- **Stock status:** 0 units is Out of Stock, 1–5 units is Low Stock, and 6 or more is In Stock.
-- **Notifications:** Messages appear at the top of the screen and close after 4 seconds, or when you click ×.
+This server returns JSON only. The UI is the Next.js app in `nextjs-dashboard/`; `pnpm dev` from the repo root starts both, and the UI is at http://localhost:3000/ by default. Call the endpoints below directly, or import the Postman collection.
 
 ## Troubleshooting
 
 - **`EADDRINUSE` on startup:** Another program is using the port. Set a different `PORT` (see Configuration).
-- **Products are gone after a restart:** This is expected. Products live in memory only.
+- **`Could not connect to SQL Server`:** Check that the container is `healthy` (`docker compose ps`), that `DB_PASSWORD` is set, and that it matches `MSSQL_SA_PASSWORD`.
+- **Products are missing:** Run `pnpm seed`. The activity log is in memory and resets on restart.
 - **Favorites differ between browsers:** Favorites are stored per browser, not on the server.
 - **`pnpm: command not found`:** Install pnpm before running the commands above.
 
 ## API Documentation
 
-Base URL: `http://localhost:3000`
+Base URL: `http://localhost:3001`
 
 Responses use one of two shapes:
 
@@ -150,11 +164,19 @@ Send all product fields. The body uses the same rules as POST.
 - `200` with `{ "success": true, "data": { "id": "1" } }`
 - `404` if the product does not exist
 
+### GET /activity
+
+Returns the latest 50 product changes, newest first. Each entry has `id`, `action` (`created`, `updated`, or `deleted`), `productId`, `productName`, `detail` (for example `quantity 25 → 24`, or `null` for deletes), and `at` (ISO time). The log is in memory and resets on restart.
+
+- `200` with an array in `data`
+
 ### Errors
 
 Malformed JSON returns `400` with `"Malformed JSON request body"`. Unknown routes return `404`. Unexpected server errors return `500` with a generic message; details are written to the server console only.
 
 ## Browser API Implementation
+
+The browser code now lives in the Next.js app (`nextjs-dashboard/app/stockroom/`). The behavior below still applies to the UI.
 
 ### Web Storage API
 
@@ -168,18 +190,19 @@ The product form uses native attributes: `required`, `min`, `step`, and `pattern
 
 ```text
 stockroom/
-├── app.js                  Express app setup, static files, error handling
+├── app.js                  Express app setup, home route, error handling
+├── db.js                   SQL Server connection pool (mssql)
+├── docker-compose.yml      SQL Server container
+├── .env.example            Environment variables template
 ├── package.json
 ├── pnpm-lock.yaml
 ├── README.md
 ├── middleware/
 │   └── requestLogger.js    Logs each request: method, URL, status, duration
 ├── routes/
-│   └── products.js         Product routes, validation, in-memory product array
-├── public/
-│   ├── index.html          Dashboard page
-│   ├── css/style.css       Styles
-│   └── js/app.js           Fetch calls, table rendering, favorites, form
+│   └── products.js         Product routes, validation, SQL queries
+├── scripts/
+│   └── seed.js             Creates the database table and sample products
 ├── postman/
 │   └── Stockroom.postman_collection.json
 └── test/
@@ -189,7 +212,7 @@ stockroom/
 ## Postman Testing
 
 1. In Postman, choose **Import** and select `postman/Stockroom.postman_collection.json`.
-2. The collection variable `baseUrl` is `http://localhost:3000`. Change it if your server uses another port.
+2. The collection variable `baseUrl` is `http://localhost:3001`. Change it if your server uses another port.
 3. Start the server, then run the requests in order. **Create product** stores the new ID in `productId`, which the Update and Delete requests use.
 4. Each request's description lists the expected responses.
 
@@ -217,6 +240,6 @@ Every API error uses the same format:
 
 ## Known Limitations
 
-- Products are stored in memory and reset when the server restarts.
+- The activity log is stored in memory and resets when the server restarts.
 - Favorites are stored in each browser's `localStorage`. They are not shared between browsers and are not tied to a user.
-- There is no authentication, pagination, or database.
+- There is no authentication or pagination.
